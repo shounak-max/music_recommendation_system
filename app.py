@@ -1,39 +1,38 @@
-from flask import Flask,request,render_template
-import numpy as np
+from flask import Flask, request, render_template
 import pandas as pd
+import numpy as np
 import pickle
 
-# laoding models
-df = pickle.load(open('df.pkl','rb'))
-similarity = pickle.load(open('similarity.pkl','rb'))
+# Load data
+df = pickle.load(open('df.pkl', 'rb'))
+similarity = pickle.load(open('similarity.pkl', 'rb'))
 
-
-def recommendation(song_df):
-    idx = df[df['song'] == song_df].index[0]
-    distances = sorted(list(enumerate(similarity[idx])), reverse=True, key=lambda x: x[1])
-
-    songs = []
-    for m_id in distances[1:21]:
-        songs.append(df.iloc[m_id[0]].song)
-
-    return songs
-
-
-# flask app
 app = Flask(__name__)
-# paths
+
+# Recommendation function
+def recommend(song):
+    song_index = df[df['song'] == song].index[0]
+    distances = similarity.iloc[song_index].values
+
+    songs_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
+
+    recommended_songs = []
+    for i in songs_list:
+        recommended_songs.append(df.iloc[i[0]].song)
+    return recommended_songs
+
 @app.route('/')
 def index():
-    names = list(df['song'].values)
-    return render_template('index.html',name = names)
-@app.route('/recom',methods=['POST'])
+    songs = df['song'].values
+    return render_template('index.html', songs=songs)
+
+@app.route('/recom', methods=['POST'])
 def mysong():
-    user_song = request.form['names']
-    songs = recommendation(user_song)
+    selected_song = request.form.get('song')
+    recommended = recommend(selected_song)
+    return render_template('index.html', songs=df['song'].values,
+                           selected_song=selected_song,
+                           recommended_songs=recommended)
 
-    return render_template('index.html',songs=songs)
-
-
-# python
 if __name__ == "__main__":
     app.run(debug=True)
